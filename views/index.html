@@ -1,92 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Exercise Tracker</title>
-  <link rel="shortcut icon" href="https://cdn.freecodecamp.org/universal/favicons/favicon.ico" type="image/x-icon" />
-  <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" type="text/css" />
-  <link href="style.css" rel="stylesheet" type="text/css" />
-</head>
-<body>
-  <div class="container">
-    <h1>Exercise Tracker</h1>
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<title>Exercise Tracker</title>
+		<link
+			rel="shortcut icon"
+			href="https://cdn.freecodecamp.org/universal/favicons/favicon.ico"
+			type="image/x-icon"
+		/>
+		<link
+			href="https://fonts.googleapis.com/css?family=Roboto"
+			rel="stylesheet"
+			type="text/css"
+		/>
+		<link
+			href="style.css"
+			rel="stylesheet"
+			type="text/css"
+		/>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Exercise Tracker</h1>
 
-    <form id="user-form">
-      <h2>Create a New User</h2>
-      <input id="uname" type="text" name="username" placeholder="username" required />
-      <input type="submit" value="Submit" />
-    </form>
+			<form id="user-form">
+				<h2>Create a New User</h2>
+				<input
+					id="uname"
+					type="text"
+					name="username"
+					placeholder="username"
+					required
+				/>
+				<input type="submit" value="Submit" />
+			</form>
 
-    <form id="exercise-form">
-      <h2>Add Exercises</h2>
-      <input id="uid" type="text" name="_id" placeholder="User ID" required />
-      <input id="desc" type="text" name="description" placeholder="description*" required />
-      <input id="dur" type="number" name="duration" placeholder="duration* (mins.)" required />
-      <input id="date" type="date" name="date" placeholder="date (yyyy-mm-dd)" />
-      <input type="submit" value="Submit" />
-    </form>
+			<form id="exercise-form">
+				<h2>Add Exercises</h2>
+				<input
+					id="uid"
+					type="text"
+					name="_id"
+					placeholder="User ID"
+					required
+				/>
+				<input
+					id="desc"
+					type="text"
+					name="description"
+					placeholder="description*"
+					required
+				/>
+				<input
+					id="dur"
+					type="number"
+					name="duration"
+					placeholder="duration* (mins.)"
+					required
+				/>
+				<input
+					id="date"
+					type="date"
+					name="date"
+					placeholder="date (yyyy-mm-dd)"
+				/>
+				<input type="submit" value="Submit" />
+			</form>
 
-    <h2>User Log</h2>
-    <form id="log-form">
-      <input id="log-uid" type="text" name="_id" placeholder="User ID" required />
-      <input type="submit" value="Get User Log" />
-    </form>
-    
-    <div id="log-results"></div>
-  </div>
+			<h2>User Log</h2>
+			<form id="log-form">
+				<input
+					id="log-uid"
+					type="text"
+					name="_id"
+					placeholder="User ID"
+					required
+				/>
+				<input type="submit" value="Get User Log" />
+			</form>
 
-  <script>
-    const userForm = document.getElementById('user-form');
-    const exerciseForm = document.getElementById('exercise-form');
-    const logForm = document.getElementById('log-form');
-    const logResults = document.getElementById('log-results');
+			<div id="log-results"></div>
+		</div>
 
-    userForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const username = document.getElementById('uname').value;
+		<script>
+			const userForm = document.getElementById('user-form');
+			const exerciseForm =
+				document.getElementById('exercise-form');
+			const logForm = document.getElementById('log-form');
+			const logResults =
+				document.getElementById('log-results');
 
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      });
+			userForm.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const username =
+					document.getElementById('uname').value;
 
-      const data = await response.json();
-      alert(`User created: ${data.username} (ID: ${data._id})`);
-    });
+				const response = await fetch('/api/users', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username }),
+				});
 
-    exerciseForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const userId = document.getElementById('uid').value;
-      const description = document.getElementById('desc').value;
-      const duration = document.getElementById('dur').value;
-      const date = document.getElementById('date').value;
+				const data = await response.json();
+				alert(
+					`User created: ${data.username} (ID: ${data._id})`
+				);
+			});
 
-      const response = await fetch(`/api/users/${userId}/exercises`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description, duration, date })
-      });
+			exerciseForm.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const userId = document.getElementById('uid').value;
+				const description =
+					document.getElementById('desc').value;
+				const duration =
+					document.getElementById('dur').value;
+				const date = document.getElementById('date').value;
 
-      const data = await response.json();
-      alert(`Exercise added for ${data.username}: ${data.description} for ${data.duration} mins on ${data.date}`);
-    });
+				const response = await fetch(
+					`/api/users/${userId}/exercises`,
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							description,
+							duration,
+							date,
+						}),
+					}
+				);
 
-    logForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const userId = document.getElementById('log-uid').value;
+				const data = await response.json();
+				alert(
+					`Exercise added for ${data.username}: ${data.description} for ${data.duration} mins on ${data.date}`
+				);
+			});
 
-      const response = await fetch(`/api/users/${userId}/logs`);
-      const data = await response.json();
+			logForm.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const userId =
+					document.getElementById('log-uid').value;
 
-      let logHTML = `<strong>User: ${data.username} (${data.count} exercises)</strong><ul>`;
-      data.log.forEach(ex => {
-        logHTML += `<li>${ex.description} - ${ex.duration} mins on ${ex.date}</li>`;
-      });
-      logHTML += '</ul>';
-      logResults.innerHTML = logHTML;
-    });
-  </script>
-</body>
+				const response = await fetch(
+					`/api/users/${userId}/logs`
+				);
+				const data = await response.json();
+
+				let logHTML = `<strong>User: ${data.username} (${data.count} exercises)</strong><ul>`;
+				data.log.forEach((ex) => {
+					logHTML += `<li>${ex.description} - ${ex.duration} mins on ${ex.date}</li>`;
+				});
+				logHTML += '</ul>';
+				logResults.innerHTML = logHTML;
+			});
+		</script>
+	</body>
 </html>

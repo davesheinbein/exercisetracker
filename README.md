@@ -1,6 +1,7 @@
 # Exercise Tracker
 
-This is an Exercise Tracker application built with Node.js, Express, and MongoDB.
+This is an Exercise Tracker application built with Node.js,
+Express, and MongoDB.
 
 ## Live Demo
 
@@ -28,7 +29,8 @@ This is an Exercise Tracker application built with Node.js, Express, and MongoDB
    npm install
    ```
 
-3. Create a `.env` file in the root directory and add your MongoDB URI:
+3. Create a `.env` file in the root directory and add your
+   MongoDB URI:
 
    ```env
    MONGO_URI=your_mongodb_uri
@@ -40,4 +42,3 @@ This is an Exercise Tracker application built with Node.js, Express, and MongoDB
    ```sh
    npm start
    ```
-
