@@ -1,7 +1,11 @@
-const express = require('express'); // Import the Express framework to create the server
-const mongoose = require('mongoose'); // Import Mongoose for MongoDB interaction
-const cors = require('cors'); // Import CORS to handle cross-origin requests
-require('dotenv').config(); // Load environment variables from a .env file
+// Import the Express framework to create the server
+const express = require('express');
+// Import Mongoose for MongoDB interaction
+const mongoose = require('mongoose');
+// Import CORS to handle cross-origin requests
+const cors = require('cors');
+// Load environment variables from a .env file
+require('dotenv').config();
 
 // Initialize an Express app
 const app = express();
