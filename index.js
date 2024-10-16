@@ -86,44 +86,56 @@ app.get('/api/users', async (req, res) => {
 // Route to add an exercise to a specific user
 // The user's ID is in the URL parameter, and the exercise details are in the request body
 app.post('/api/users/:_id/exercises', async (req, res) => {
-	const { description, duration, date } = req.body; // Extract exercise details from the request body
-	const userId = req.params._id; // Extract user ID from the URL parameter
+	// Extract exercise details from the request body
+	const { description, duration, date } = req.body;
+	// Extract user ID from the URL parameter
+	const userId = req.params._id;
 
-	// Create a new Exercise instance and save it to the database
-	const exercise = new Exercise({
-		userId, // Associate the exercise with the user
-		description, // Description of the exercise
-		duration, // Duration in minutes
-		date: date
-			? new Date(date).toDateString()
-			: new Date().toDateString(), // Optional date, default to current date
-	});
+	try {
+		// Create a new Exercise instance and save it to the database
+		const exercise = new Exercise({
+			userId, // Associate the exercise with the user
+			description, // Description of the exercise
+			duration, // Duration in minutes
+			date: date
+				? new Date(date).toDateString()
+				: new Date().toDateString(), // Optional date, default to current date
+		});
 
-	await exercise.save(); // Save the exercise to the database
+		// Save the exercise to the database
+		await exercise.save();
 
-	const user = await User.findById(userId); // Find the user by ID in the database
+		// Find the user by ID in the database
+		const user = await User.findById(userId);
 
-	// Respond with user details and the exercise information
-	res.json({
-		username: user.username,
-		_id: userId,
-		description,
-		duration,
-		date: exercise.date,
-	});
+		// Respond with user details and the exercise information
+		res.json({
+			...user.toObject(), // Include all user fields
+			description,
+			duration,
+			date: exercise.date,
+		});
+	} catch (error) {
+		res.status(400).json({ error: error.message }); // Handle errors
+	}
 });
 
 // Route to get a user's exercise log
 // The user's ID is in the URL parameter, and optional 'from', 'to', and 'limit' query parameters filter the log
 app.get('/api/users/:_id/logs', async (req, res) => {
-	const userId = req.params._id; // Extract user ID from the URL parameter
-	const { from, to, limit } = req.query; // Extract optional query parameters
+	// Extract user ID from the URL parameter
+	const userId = req.params._id;
+	// Extract optional query parameters
+	const { from, to, limit } = req.query;
 
-	const query = { userId }; // Base query to find exercises for this user
+	// Base query to find exercises for this user
+	const query = { userId };
 	if (from)
-		query.date = { ...query.date, $gte: new Date(from) }; // Add 'from' date filter if provided
+		// Add 'from' date filter if provided
+		query.date = { ...query.date, $gte: new Date(from) };
 	if (to)
-		query.date = { ...query.date, $lte: new Date(to) }; // Add 'to' date filter if provided
+		// Add 'to' date filter if provided
+		query.date = { ...query.date, $lte: new Date(to) };
 
 	// Find exercises matching the query, limit results if 'limit' is provided
 	const exercises = await Exercise.find(query).limit(
