@@ -24,98 +24,85 @@ app.use(express.static('public'));
 // Parse URL-encoded data (form submissions)
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB using the connection string stored in environment variables (MONGO_URI)
-// useNewUrlParser and useUnifiedTopology options are to handle deprecations
-console.log("Connecting to MongoDB...");
-mongoose.connect(process.env.MONGO_URI, {
-	useNewUrlParser: true,
-	useUnifiedTopology: true,
-}).then(() => {
-    console.log('MongoDB connection established');
-}).catch((error) => {
-    console.log('Error connecting to MongoDB:', error);
-});
+// Connect to MongoDB
+console.log('Connecting to MongoDB...');
+mongoose
+	.connect(process.env.MONGO_URI, {
+		useNewUrlParser: true,
+		useUnifiedTopology: true,
+	})
+	.then(() => console.log('Connected to MongoDB'))
+	.catch((error) => console.log('MongoDB connection error:', error));
 
-// Define a schema for users where each user must have a unique and required 'username'
+// Define user and exercise schemas
 const userSchema = new mongoose.Schema({
-	username: { type: String, required: true, unique: true }, // A user must have a unique username
+	username: { type: String, required: true, unique: true },
 });
 
-// Define a schema for exercises where each exercise is linked to a user by 'userId'
-// Each exercise has a 'description', 'duration', and an optional 'date' (defaults to the current date)
 const exerciseSchema = new mongoose.Schema({
-	userId: { 
-	  type: mongoose.Schema.Types.ObjectId,
-	  required: true,
-	}, // Reference to the User model
-	description: { type: String, required: true }, // Description of the exercise
-	duration: { type: Number, required: true }, // Duration of the exercise in minutes
-	date: {
-	  type: String,
-	  default: Date.now,
-	}, // Date of the exercise (defaults to current date)
+	userId: { type: mongoose.Schema.Types.ObjectId, required: true },
+	description: { type: String, required: true },
+	duration: { type: Number, required: true },
+	date: { type: String, default: Date.now },
 });
 
-// Create models based on the schemas to interact with the 'users' and 'exercises' collections in MongoDB
 const User = mongoose.model('User', userSchema);
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
 // Routes
 
-// Serve the homepage (index.html) when the root URL is accessed
+// Serve the homepage
 app.get('/', (req, res) => {
-	console.log("GET request to '/'");
+	console.log('GET /');
 	res.sendFile(__dirname + '/views/index.html');
 });
 
-// Route to create a new user
+// Create a new user
 app.post('/api/users', async (req, res) => {
-	console.log("POST request to '/api/users' with data:", req.body);
+	console.log('POST /api/users', req.body);
 	const { username } = req.body;
 	try {
 		const newUser = new User({ username });
 		const savedUser = await newUser.save();
-		console.log("New user created:", savedUser);
+		console.log('User created:', savedUser);
 		res.status(201).json(savedUser);
 	} catch (error) {
-		console.log("Error creating user:", error);
+		console.log('Error creating user:', error);
 		res.status(400).json({ error: error.message });
 	}
 });
 
-// Route to get all users
+// Get all users
 app.get('/api/users', async (req, res) => {
-	console.log("GET request to '/api/users'");
+	console.log('GET /api/users');
 	const users = await User.find({}, { username: 1, _id: 1 });
-	console.log("Users found:", users);
+	console.log('Users:', users);
 	res.json(users);
 });
 
-// Route to add an exercise to a specific user
+// Add an exercise to a specific user
 app.post('/api/users/:_id/exercises', async (req, res) => {
-	console.log("POST request to '/api/users/:_id/exercises' with data:", req.body);
+	console.log('POST /api/users/:_id/exercises', req.body);
 	const { description, duration, date } = req.body;
 	const userId = req.params._id;
 
 	try {
-		console.log("Creating new exercise for user ID:", userId);
 		const exercise = new Exercise({
 			userId,
 			description,
 			duration,
 			date: date ? new Date(date).toDateString() : new Date().toDateString(),
 		});
-
 		await exercise.save();
-		console.log("Exercise saved:", exercise);
+		console.log('Exercise saved:', exercise);
 
 		const user = await User.findById(userId);
 		if (!user) {
-			console.log("User not found with ID:", userId);
-			return res.status(404).json({ error: "User not found" });
+			console.log('User not found:', userId);
+			return res.status(404).json({ error: 'User not found' });
 		}
 
-		console.log("User found:", user);
+		console.log('User found:', user);
 		res.json({
 			_id: user._id,
 			username: user.username,
@@ -124,76 +111,68 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 			date: exercise.date,
 		});
 	} catch (error) {
-		console.log("Error adding exercise:", error);
+		console.log('Error adding exercise:', error);
 		res.status(400).json({ error: error.message });
 	}
 });
 
-// Route to get a user's exercise log
-// Route to get a user's exercise log
+// Get a user's exercise log
 app.get('/api/users/:_id/logs', async (req, res) => {
-    console.log("GET request to '/api/users/:_id/logs' with query:", req.query);
-    const userId = req.params._id;
-    const { from, to, limit } = req.query;
+	console.log('GET /api/users/:_id/logs', req.query);
+	const userId = req.params._id;
+	const { from, to, limit } = req.query;
+	const query = { userId };
 
-    const query = { userId };
+	if (from) {
+		const fromDate = moment(from, 'YYYY-MM-DD');
+		if (fromDate.isValid()) {
+			query.date = { ...query.date, $gte: fromDate.format('YYYY-MM-DD') };
+		} else {
+			console.log('Invalid "from" date:', from);
+			return res.status(400).json({ error: 'Invalid "from" date' });
+		}
+	}
 
-    // If 'from' query parameter is provided, use moment to parse the date and add condition for 'from' date
-    if (from) {
-        const fromDate = moment(from, 'YYYY-MM-DD', true);
-        if (fromDate.isValid()) {
-            console.log(`Adding 'from' date filter: ${fromDate.toDate()}`);
-            query.date = { ...query.date, $gte: fromDate.toDate() };
-        } else {
-            return res.status(400).json({ error: "'from' date is invalid, use yyyy-mm-dd format" });
-        }
-    }
+	if (to) {
+		const toDate = moment(to, 'YYYY-MM-DD');
+		if (toDate.isValid()) {
+			query.date = { ...query.date, $lte: toDate.format('YYYY-MM-DD') };
+		} else {
+			console.log('Invalid "to" date:', to);
+			return res.status(400).json({ error: 'Invalid "to" date' });
+		}
+	}
 
-    // If 'to' query parameter is provided, use moment to parse the date and add condition for 'to' date
-    if (to) {
-        const toDate = moment(to, 'YYYY-MM-DD', true);
-        if (toDate.isValid()) {
-            console.log(`Adding 'to' date filter: ${toDate.toDate()}`);
-            query.date = { ...query.date, $lte: toDate.toDate() };
-        } else {
-            return res.status(400).json({ error: "'to' date is invalid, use yyyy-mm-dd format" });
-        }
-    }
+	console.log('Query:', query);
 
-    try {
-        console.log("Finding exercises with query:", query);
+	try {
+		const exercises = await Exercise.find(query).limit(parseInt(limit) || 0);
+		console.log('Exercises found:', exercises.length);
 
-        // Convert limit to an integer, default to 0 (no limit)
-        const limitValue = parseInt(limit) || 0;
+		const user = await User.findById(userId);
+		if (!user) {
+			console.log('User not found:', userId);
+			return res.status(404).json({ error: 'User not found' });
+		}
 
-        const exercises = await Exercise.find(query).limit(limitValue);
-        console.log("Exercises found:", exercises);
-
-        const user = await User.findById(userId);
-        if (!user) {
-            console.log("User not found with ID:", userId);
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        console.log("User found:", user);
-        res.json({
-            username: user.username,
-            count: exercises.length,
-            _id: userId,
-            log: exercises.map(({ description, duration, date }) => ({
-                description,
-                duration,
-                date: moment(date).format('ddd MMM DD YYYY'), // Ensure consistent date format
-            })),
-        });
-    } catch (error) {
-        console.log("Error retrieving logs:", error);
-        res.status(400).json({ error: error.message });
-    }
+		console.log('User found:', user);
+		res.json({
+			username: user.username,
+			count: exercises.length,
+			_id: userId,
+			log: exercises.map(({ description, duration, date }) => ({
+				description,
+				duration,
+				date: moment(date).format('ddd MMM DD YYYY'),
+			})),
+		});
+	} catch (error) {
+		console.log('Error fetching logs:', error);
+		res.status(400).json({ error: error.message });
+	}
 });
 
-
-// Start the server and listen on the specified port (from .env file or default to 3000)
+// Start the server
 const listener = app.listen(process.env.PORT || 3000, () => {
-	console.log('Your app is listening on port ' + listener.address().port);
+	console.log('Server is running on port', listener.address().port);
 });
