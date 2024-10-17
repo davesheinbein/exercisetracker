@@ -50,7 +50,7 @@ const exerciseSchema = new mongoose.Schema({
 	duration: { type: Number, required: true }, // Duration of the exercise in minutes
 	date: {
 	  type: String,
-	  default: () => new Date().toDateString(),
+	  default: Date.now,
 	}, // Date of the exercise (defaults to current date)
 });
 
@@ -185,6 +185,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 		res.status(400).json({ error: error.message });
 	}
 });
+
 
 // Start the server and listen on the specified port (from .env file or default to 3000)
 const listener = app.listen(process.env.PORT || 3000, () => {
