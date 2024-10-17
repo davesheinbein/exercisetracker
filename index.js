@@ -24,9 +24,14 @@ app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB using the connection string stored in environment variables (MONGO_URI)
 // useNewUrlParser and useUnifiedTopology options are to handle deprecations
+console.log("Connecting to MongoDB...");
 mongoose.connect(process.env.MONGO_URI, {
 	useNewUrlParser: true,
 	useUnifiedTopology: true,
+}).then(() => {
+    console.log('MongoDB connection established');
+}).catch((error) => {
+    console.log('Error connecting to MongoDB:', error);
 });
 
 // Define a schema for users where each user must have a unique and required 'username'
@@ -37,15 +42,15 @@ const userSchema = new mongoose.Schema({
 // Define a schema for exercises where each exercise is linked to a user by 'userId'
 // Each exercise has a 'description', 'duration', and an optional 'date' (defaults to the current date)
 const exerciseSchema = new mongoose.Schema({
-	userId: {
-		type: mongoose.Schema.Types.ObjectId,
-		required: true,
+	userId: { 
+	  type: mongoose.Schema.Types.ObjectId,
+	  required: true,
 	}, // Reference to the User model
 	description: { type: String, required: true }, // Description of the exercise
 	duration: { type: Number, required: true }, // Duration of the exercise in minutes
 	date: {
-		type: String,
-		default: () => new Date().toDateString(),
+	  type: String,
+	  default: () => new Date().toDateString(),
 	}, // Date of the exercise (defaults to current date)
 });
 
@@ -57,115 +62,131 @@ const Exercise = mongoose.model('Exercise', exerciseSchema);
 
 // Serve the homepage (index.html) when the root URL is accessed
 app.get('/', (req, res) => {
-	res.sendFile(__dirname + '/views/index.html'); // Sends the HTML file from the views directory
+	console.log("GET request to '/'");
+	res.sendFile(__dirname + '/views/index.html');
 });
 
 // Route to create a new user
-// The username is sent in the request body, a new user is created and saved to the database
 app.post('/api/users', async (req, res) => {
-	const { username } = req.body; // Extract username from the request body
+	console.log("POST request to '/api/users' with data:", req.body);
+	const { username } = req.body;
 	try {
-		const newUser = new User({ username }); // Create a new User instance
-		const savedUser = await newUser.save(); // Save the new user to the database
-		res.status(201).json(savedUser); // Respond with the newly created user
+		const newUser = new User({ username });
+		const savedUser = await newUser.save();
+		console.log("New user created:", savedUser);
+		res.status(201).json(savedUser);
 	} catch (error) {
-		res.status(400).json({ error: error.message }); // Handle errors (e.g., duplicate usernames)
+		console.log("Error creating user:", error);
+		res.status(400).json({ error: error.message });
 	}
 });
 
 // Route to get all users
-// It fetches all users from the database, showing only the 'username' and '_id' fields
 app.get('/api/users', async (req, res) => {
-	const users = await User.find(
-		{},
-		{ username: 1, _id: 1 }
-	); // Fetch all users (only username and _id)
-	res.json(users); // Respond with the list of users
+	console.log("GET request to '/api/users'");
+	const users = await User.find({}, { username: 1, _id: 1 });
+	console.log("Users found:", users);
+	res.json(users);
 });
 
 // Route to add an exercise to a specific user
-// The user's ID is in the URL parameter, and the exercise details are in the request body
 app.post('/api/users/:_id/exercises', async (req, res) => {
-	// Extract exercise details from the request body
+	console.log("POST request to '/api/users/:_id/exercises' with data:", req.body);
 	const { description, duration, date } = req.body;
-	// Extract user ID from the URL parameter
 	const userId = req.params._id;
 
 	try {
-		// Create a new Exercise instance and save it to the database
+		console.log("Creating new exercise for user ID:", userId);
 		const exercise = new Exercise({
-			userId, // Associate the exercise with the user
-			description, // Description of the exercise
-			duration, // Duration in minutes
-			date: date
-				? new Date(date).toDateString()
-				: new Date().toDateString(), // Optional date, default to current date
-		});
-
-		// Save the exercise to the database
-		await exercise.save();
-
-		// Find the user by ID in the database
-		const user = await User.findById(userId);
-
-		// Respond with user details and the exercise information
-		res.json({
-			...user.toObject(), // Include all user fields
+			userId,
 			description,
 			duration,
+			date: date ? new Date(date).toDateString() : new Date().toDateString(),
+		});
+
+		await exercise.save();
+		console.log("Exercise saved:", exercise);
+
+		const user = await User.findById(userId);
+		if (!user) {
+			console.log("User not found with ID:", userId);
+			return res.status(404).json({ error: "User not found" });
+		}
+
+		console.log("User found:", user);
+		res.json({
+			_id: user._id,
+			username: user.username,
+			description: exercise.description,
+			duration: exercise.duration,
 			date: exercise.date,
 		});
 	} catch (error) {
-		res.status(400).json({ error: error.message }); // Handle errors
+		console.log("Error adding exercise:", error);
+		res.status(400).json({ error: error.message });
 	}
 });
 
 // Route to get a user's exercise log
-// The user's ID is in the URL parameter, and optional 'from', 'to', and 'limit' query parameters filter the log
 app.get('/api/users/:_id/logs', async (req, res) => {
-	// Extract user ID from the URL parameter
+	console.log("GET request to '/api/users/:_id/logs' with query:", req.query);
 	const userId = req.params._id;
-	// Extract optional query parameters
 	const { from, to, limit } = req.query;
 
-	// Base query to find exercises for this user
 	const query = { userId };
-	if (from)
-		// Add 'from' date filter if provided
-		query.date = { ...query.date, $gte: new Date(from) };
-	if (to)
-		// Add 'to' date filter if provided
-		query.date = { ...query.date, $lte: new Date(to) };
 
-	// Find exercises matching the query, limit results if 'limit' is provided
-	const exercises = await Exercise.find(query).limit(
-		parseInt(limit)
-	);
-	const user = await User.findById(userId); // Find the user by ID
+	// If 'from' query parameter is provided, add date condition for greater than or equal
+	if (from) {
+		const fromDate = new Date(from);
+		if (!isNaN(fromDate)) {
+			console.log(`Adding 'from' date filter: ${fromDate}`);
+			query.date = { ...query.date, $gte: fromDate };
+		} else {
+			return res.status(400).json({ error: "'from' date is invalid" });
+		}
+	}
 
-	// Respond with the user's username, the count of exercises, and the log of exercises
-	res.json({
-		username: user.username,
-		count: exercises.length, // Number of exercises
-		_id: userId,
-		log: exercises.map(
-			({ description, duration, date }) => ({
-				// Map each exercise to the desired format
+	// If 'to' query parameter is provided, add date condition for less than or equal
+	if (to) {
+		const toDate = new Date(to);
+		if (!isNaN(toDate)) {
+			console.log(`Adding 'to' date filter: ${toDate}`);
+			query.date = { ...query.date, $lte: toDate };
+		} else {
+			return res.status(400).json({ error: "'to' date is invalid" });
+		}
+	}
+
+	try {
+		console.log("Finding exercises with query:", query);
+		// If 'limit' is provided, use it; otherwise, fetch all exercises
+		const exercises = await Exercise.find(query).limit(parseInt(limit) || 0);
+		console.log("Exercises found:", exercises);
+
+		const user = await User.findById(userId);
+		if (!user) {
+			console.log("User not found with ID:", userId);
+			return res.status(404).json({ error: "User not found" });
+		}
+
+		console.log("User found:", user);
+		res.json({
+			username: user.username,
+			count: exercises.length,
+			_id: userId,
+			log: exercises.map(({ description, duration, date }) => ({
 				description,
 				duration,
 				date,
-			})
-		),
-	});
+			})),
+		});
+	} catch (error) {
+		console.log("Error retrieving logs:", error);
+		res.status(400).json({ error: error.message });
+	}
 });
 
 // Start the server and listen on the specified port (from .env file or default to 3000)
-const listener = app.listen(
-	process.env.PORT || 3000,
-	() => {
-		console.log(
-			'Your app is listening on port ' +
-				listener.address().port
-		); // Log the port the server is running on
-	}
-);
+const listener = app.listen(process.env.PORT || 3000, () => {
+	console.log('Your app is listening on port ' + listener.address().port);
+});
