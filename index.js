@@ -4,6 +4,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 // Import CORS to handle cross-origin requests
 const cors = require('cors');
+// Import moment for date handling
+const moment = require('moment');
 // Load environment variables from a .env file
 require('dotenv').config();
 
@@ -128,62 +130,66 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 });
 
 // Route to get a user's exercise log
+// Route to get a user's exercise log
 app.get('/api/users/:_id/logs', async (req, res) => {
-	console.log("GET request to '/api/users/:_id/logs' with query:", req.query);
-	const userId = req.params._id;
-	const { from, to, limit } = req.query;
+    console.log("GET request to '/api/users/:_id/logs' with query:", req.query);
+    const userId = req.params._id;
+    const { from, to, limit } = req.query;
 
-	const query = { userId };
+    const query = { userId };
 
-	// If 'from' query parameter is provided, add date condition for greater than or equal
-	if (from) {
-		const fromDate = new Date(from);
-		if (!isNaN(fromDate)) {
-			console.log(`Adding 'from' date filter: ${fromDate}`);
-			query.date = { ...query.date, $gte: fromDate };
-		} else {
-			return res.status(400).json({ error: "'from' date is invalid" });
-		}
-	}
+    // If 'from' query parameter is provided, use moment to parse the date and add condition for 'from' date
+    if (from) {
+        const fromDate = moment(from, 'YYYY-MM-DD', true);
+        if (fromDate.isValid()) {
+            console.log(`Adding 'from' date filter: ${fromDate.toDate()}`);
+            query.date = { ...query.date, $gte: fromDate.toDate() };
+        } else {
+            return res.status(400).json({ error: "'from' date is invalid, use yyyy-mm-dd format" });
+        }
+    }
 
-	// If 'to' query parameter is provided, add date condition for less than or equal
-	if (to) {
-		const toDate = new Date(to);
-		if (!isNaN(toDate)) {
-			console.log(`Adding 'to' date filter: ${toDate}`);
-			query.date = { ...query.date, $lte: toDate };
-		} else {
-			return res.status(400).json({ error: "'to' date is invalid" });
-		}
-	}
+    // If 'to' query parameter is provided, use moment to parse the date and add condition for 'to' date
+    if (to) {
+        const toDate = moment(to, 'YYYY-MM-DD', true);
+        if (toDate.isValid()) {
+            console.log(`Adding 'to' date filter: ${toDate.toDate()}`);
+            query.date = { ...query.date, $lte: toDate.toDate() };
+        } else {
+            return res.status(400).json({ error: "'to' date is invalid, use yyyy-mm-dd format" });
+        }
+    }
 
-	try {
-		console.log("Finding exercises with query:", query);
-		// If 'limit' is provided, use it; otherwise, fetch all exercises
-		const exercises = await Exercise.find(query).limit(parseInt(limit) || 0);
-		console.log("Exercises found:", exercises);
+    try {
+        console.log("Finding exercises with query:", query);
 
-		const user = await User.findById(userId);
-		if (!user) {
-			console.log("User not found with ID:", userId);
-			return res.status(404).json({ error: "User not found" });
-		}
+        // Convert limit to an integer, default to 0 (no limit)
+        const limitValue = parseInt(limit) || 0;
 
-		console.log("User found:", user);
-		res.json({
-			username: user.username,
-			count: exercises.length,
-			_id: userId,
-			log: exercises.map(({ description, duration, date }) => ({
-				description,
-				duration,
-				date,
-			})),
-		});
-	} catch (error) {
-		console.log("Error retrieving logs:", error);
-		res.status(400).json({ error: error.message });
-	}
+        const exercises = await Exercise.find(query).limit(limitValue);
+        console.log("Exercises found:", exercises);
+
+        const user = await User.findById(userId);
+        if (!user) {
+            console.log("User not found with ID:", userId);
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        console.log("User found:", user);
+        res.json({
+            username: user.username,
+            count: exercises.length,
+            _id: userId,
+            log: exercises.map(({ description, duration, date }) => ({
+                description,
+                duration,
+                date: moment(date).format('ddd MMM DD YYYY'), // Ensure consistent date format
+            })),
+        });
+    } catch (error) {
+        console.log("Error retrieving logs:", error);
+        res.status(400).json({ error: error.message });
+    }
 });
 
 
