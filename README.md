@@ -2,10 +2,6 @@
 
 This is an **Exercise Tracker** application built with **Node.js**, **Express**, and **MongoDB**. It allows users to create accounts, log exercises, and view their exercise history.
 
-## Live Demo
-
-Check out the live demo of the application: [Exercise Tracker Live Demo](https://3000-freecodecam-boilerplate-fiyssqtq38q.ws-us116.gitpod.io)
-
 ## Getting Started
 
 ### Prerequisites
